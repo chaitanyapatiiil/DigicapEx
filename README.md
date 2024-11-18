@@ -2,3 +2,7 @@
 DigicapEx is a cutting-edge cryptocurrency exchange designed to provide seamless, secure, and efficient trading for digital assets. Our platform is built with state-of-the-art technology to ensure fast transactions, robust security, and a user-friendly interface, catering to both novice traders and seasoned professionals.
 
 https://phenomenonstudio.com/projects/cracker-cybersecurity-web-application/
+
+
+can consider
+https://phenomenonstudio.com/projects/cointax-crypto-tax-reporting-tool/
