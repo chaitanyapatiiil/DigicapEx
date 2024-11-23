@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,14 +54,14 @@ const Navbar = () => {
             {/* Navbar Links */}
             <div className="hidden sm:block">
               <div className="flex space-x-8">
-                <a href="/" className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
+                <a href="/buysell" className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
                   Wallet
                 </a>
-                <button className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
+                <a href="/Futures" className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
                   Futures
-                </button>
+                </a>
                 <button className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
-                  <a href="/login">News</a>
+                  <a href="/news">News</a>
                 </button>
                 <button className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
                   <a href="/login">Account</a>
@@ -81,8 +81,9 @@ const Navbar = () => {
 // StatusBar Component with WebSocket Integration
 const StatusBar = () => {
   const [statusData, setStatusData] = useState({
-    cryptos: '2.4M+',
-    exchanges: '762',
+    
+    
+    exchanges: '7',
     marketCap: '$3.25T',
     marketCapChange: '+5.31%',
     volume: '$235.54B',
@@ -98,7 +99,7 @@ const StatusBar = () => {
   // WebSocket connection
   useEffect(() => {
     // Replace this URL with the WebSocket endpoint you are using
-    const socket = new WebSocket('wss://example.com/real-time-data'); // Replace with your WebSocket URL
+    const socket = new WebSocket('wss://ws-api.binance.com:443/ws-api/v3'); // Replace with your WebSocket URL
 
     // Handle incoming WebSocket messages
     socket.onmessage = (event) => {
