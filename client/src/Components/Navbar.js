@@ -12,7 +12,7 @@ const Navbar = () => {
 
     if (searchQuery.trim()) {
       console.log(`Searching for: ${searchQuery}`);
-      window.location.href = `/search?q=${searchQuery}`;
+      window.location.href = `/${searchQuery}`;
     } else {
       alert("Please enter a search query!");
     }
@@ -61,7 +61,7 @@ const Navbar = () => {
                   Futures
                 </a>
                 <button className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
-                  <a href="/news">News</a>
+                  <a href="/new">News</a>
                 </button>
                 <button className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
                   <a href="/login">Account</a>
@@ -81,57 +81,99 @@ const Navbar = () => {
 // StatusBar Component with WebSocket Integration
 const StatusBar = () => {
   const [statusData, setStatusData] = useState({
-    
-    
-    exchanges: '7',
-    marketCap: '$3.25T',
-    marketCapChange: '+5.31%',
-    volume: '$235.54B',
-    volumeChange: '+27.07%',
+    btc: 'Loading...',
+    eth: 'Loading...',
+    sol: 'Loading...',
+    trx: 'Loading...',
+    matic: 'Loading...',
+    xrp: 'Loading...',
+    marketCap: 'Loading...',
+    volume: 'Loading...',
     dominance: {
-      btc: '59.8%',
-      eth: '12.4%',
-    },
-    ethGas: '22.87 Gwei',
-    fearGreed: '87/100',
+      btc: 'Loading...',
+      eth: 'Loading...',
+    }
   });
 
-  // WebSocket connection
   useEffect(() => {
-    // Replace this URL with the WebSocket endpoint you are using
-    const socket = new WebSocket('wss://ws-api.binance.com:443/ws-api/v3'); // Replace with your WebSocket URL
+    // WebSocket for BTC/ETH prices
+    const socket = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin,ethereum,solana,tron,polygon,ripple');
 
-    // Handle incoming WebSocket messages
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data); // Assuming the data is JSON formatted
-      setStatusData(data); // Update state with new data
+      const data = JSON.parse(event.data);
+
+      setStatusData((prevState) => ({
+        ...prevState,
+        btc: data.bitcoin ? `${parseFloat(data.bitcoin).toFixed(2)}` : prevState.btc,
+        eth: data.ethereum ? `${parseFloat(data.ethereum).toFixed(2)}` : prevState.eth,
+        sol: data.solana ? `${parseFloat(data.solana).toFixed(2)}` : prevState.sol,
+        trx: data.tron ? `${parseFloat(data.tron).toFixed(2)}` : prevState.trx,
+        matic: data.polygon ? `${parseFloat(data.polygon).toFixed(2)}` : prevState.matic,
+        xrp: data.ripple ? `${parseFloat(data.ripple).toFixed(2)}` : prevState.xrp,
+      }));
     };
 
-    socket.onerror = (error) => {
-      console.error('WebSocket Error: ', error);
+    const fetchLiveData = async () => {
+      try {
+        // Fetch global market data
+        const marketResponse = await fetch('https://api.coincap.io/v2/global');
+        const marketData = await marketResponse.json();
+
+        // Fetch ETH gas prices
+        const ethGasResponse = await fetch('https://api.etherscan.io/api?module=gastracker&action=gasoracle');
+        const ethGasData = await ethGasResponse.json();
+
+        // Calculate dominance based on market cap data
+        const btcMarketCap = marketData.data.bitcoin_market_cap_usd;
+        const ethMarketCap = marketData.data.ethereum_market_cap_usd;
+        const totalMarketCap = marketData.data.total_market_cap_usd;
+
+        const btcDominance = (btcMarketCap / totalMarketCap) * 100;
+        const ethDominance = (ethMarketCap / totalMarketCap) * 100;
+
+        setStatusData((prevState) => ({
+          ...prevState,
+          cryptos: marketData.data.active_cryptocurrencies || prevState.cryptos,
+          exchanges: marketData.data.active_exchanges || prevState.exchanges,
+          marketCap: `$${(marketData.data.total_market_cap_usd / 1e12).toFixed(2)}T`,
+          volume: `$${(marketData.data.total_volume_usd / 1e9).toFixed(2)}B`,
+          dominance: {
+            btc: `${btcDominance.toFixed(2)}%`,
+            eth: `${ethDominance.toFixed(2)}%`,
+          },
+          ethGas: ethGasData.result.ProposeGasPrice ? `${ethGasData.result.ProposeGasPrice} Gwei` : 'N/A',
+        }));
+      } catch (error) {
+        console.error('Error fetching live data:', error);
+      }
     };
 
-    socket.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
+    // Fetch live data initially and every 10 seconds
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 10000);
 
-    // Cleanup on component unmount
-    return () => socket.close();
+    // Cleanup
+    return () => {
+      socket.close();
+      clearInterval(interval);
+    };
   }, []);
 
   return (
     <div className="bg-gray-800 text-white py-2">
       <div className="container mx-auto flex justify-between items-center text-sm font-medium">
         <div className="flex items-center space-x-4">
-          <div className="text-blue-400">Cryptos: {statusData.cryptos}</div>
-          <div className="text-blue-400">Exchanges: {statusData.exchanges}</div>
-          <div className="text-green-500">Market Cap: {statusData.marketCap} {statusData.marketCapChange}</div>
-          <div className="text-green-500">24h Vol: {statusData.volume} {statusData.volumeChange}</div>
+          <div className="text-blue-400">BTC: {statusData.btc}</div>
+          <div className="text-blue-400">ETH: {statusData.eth}</div>
+          <div className="text-blue-400">SOL: {statusData.sol}</div>
+          <div className="text-blue-400">TRX: {statusData.trx}</div>
+          <div className="text-blue-400">MATIC: {statusData.matic}</div>
+          <div className="text-blue-400">XRP: {statusData.xrp}</div>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="text-blue-400">Dominance: BTC: {statusData.dominance.btc} ETH: {statusData.dominance.eth}</div>
-          <div className="text-gray-300">ETH Gas: {statusData.ethGas}</div>
-          <div className="text-blue-400">Fear & Greed: {statusData.fearGreed}</div>
+          <div className="text-green-500">Market Cap: {statusData.marketCap}</div>
+          <div className="text-green-500">Volume: {statusData.volume}</div>
+          <div className="text-green-500">Dominance: BTC: {statusData.dominance.btc} ETH: {statusData.dominance.eth}</div>
         </div>
       </div>
     </div>
