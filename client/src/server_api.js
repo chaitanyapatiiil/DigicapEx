@@ -1,1 +1,1 @@
-export const server_api = `http://localhost:8000`
+export const server_api = `http://localhost:5000/api/signup`

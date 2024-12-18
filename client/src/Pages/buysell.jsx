@@ -1,158 +1,186 @@
-import React, { useEffect, useState } from 'react';
+import axios from "axios";
+import React, { useEffect, useState } from "react";
 
-const BuySellWindow = () => {
-  const [crypto, setCrypto] = useState('Bitcoin'); // Selected cryptocurrency
-  const [orderType, setOrderType] = useState('buy'); // Buy or Sell
-  const [amount, setAmount] = useState(''); // Amount to trade
-  const [currentPrice, setCurrentPrice] = useState(null); // Real-time price
-  const [loading, setLoading] = useState(true); // Loading state
+const OrderBook = () => {
+  const [buyOrders, setBuyOrders] = useState([]);
+  const [sellOrders, setSellOrders] = useState([]);
+  const [livePrice, setLivePrice] = useState(0);
+  const [newOrder, setNewOrder] = useState({ type: "", price: "", size: "" });
+  const [userPnL, setUserPnL] = useState(0); // PnL for the user
+  const [orderHistory, setOrderHistory] = useState([]); // Stores order history
 
-  // Fetch real-time price of Bitcoin
+  // Fetch live price from CoinCap API
   useEffect(() => {
-    const fetchPrice = async () => {
+    const fetchLivePrice = async () => {
       try {
-        const response = await fetch('https://api.coincap.io/v2/assets/bitcoin');
-        const data = await response.json();
-        setCurrentPrice(parseFloat(data.data.priceUsd)); // Set price in USD
+        const response = await axios.get("https://api.coincap.io/v2/assets/bitcoin");
+        setLivePrice(parseFloat(response.data.data.priceUsd));
       } catch (error) {
-        console.error('Error fetching Bitcoin price:', error);
-      } finally {
-        setLoading(false);
+        console.error("Error fetching live price", error);
       }
     };
 
-    fetchPrice(); // Initial fetch
-    const interval = setInterval(fetchPrice, 5000); // Update every 5 seconds
+    fetchLivePrice();
 
-    return () => clearInterval(interval); // Cleanup interval on component unmount
+    const interval = setInterval(fetchLivePrice, 1000); // Update price every second
+    return () => clearInterval(interval); // Cleanup on component unmount
   }, []);
 
-  const handleOrder = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      alert('Please enter a valid amount.');
+  // Function to add orders (buy or sell)
+  const handlePlaceOrder = () => {
+    if (!newOrder.price || !newOrder.size) {
+      alert("Please enter a price and size");
       return;
     }
 
-    const orderDetails = {
-      type: orderType,
-      crypto,
-      amount: parseFloat(amount),
-      price: currentPrice,
+    const order = {
+      price: parseFloat(newOrder.price),
+      size: parseFloat(newOrder.size),
+      type: newOrder.type,
+      timestamp: new Date().toISOString(), // Store the time of order
     };
 
-    alert(`Order placed successfully:\n${JSON.stringify(orderDetails, null, 2)}`);
-    setAmount(''); // Reset the amount field
+    if (order.type === "buy") {
+      setBuyOrders((prevOrders) => [...prevOrders, order]);
+    } else if (order.type === "sell") {
+      setSellOrders((prevOrders) => [...prevOrders, order]);
+    }
+
+    // Save order to history
+    setOrderHistory((prevHistory) => [...prevHistory, order]);
+
+    setNewOrder({ type: "", price: "", size: "" });
   };
 
+  // Match orders from buy and sell
+  useEffect(() => {
+    // Sort orders by price (buy orders highest, sell orders lowest)
+    const matchedOrders = [];
+    const sortedBuyOrders = [...buyOrders].sort((a, b) => b.price - a.price);
+    const sortedSellOrders = [...sellOrders].sort((a, b) => a.price - b.price);
+
+    while (sortedBuyOrders.length && sortedSellOrders.length) {
+      const buyOrder = sortedBuyOrders[0];
+      const sellOrder = sortedSellOrders[0];
+
+      // Check if there is a match (Buy price should be >= Sell price)
+      if (buyOrder.price >= sellOrder.price) {
+        const executedSize = Math.min(buyOrder.size, sellOrder.size);
+
+        // Update PnL for the user using the live price
+        const executedPnL = executedSize * (livePrice - buyOrder.price);
+        setUserPnL((prevPnL) => prevPnL + executedPnL);
+
+        // Update order sizes
+        buyOrder.size -= executedSize;
+        sellOrder.size -= executedSize;
+
+        // Remove completed orders
+        if (buyOrder.size === 0) sortedBuyOrders.shift();
+        if (sellOrder.size === 0) sortedSellOrders.shift();
+
+        matchedOrders.push({
+          buyOrder,
+          sellOrder,
+          executedSize,
+          executedPnL,
+        });
+      } else {
+        break;
+      }
+    }
+
+    setBuyOrders(sortedBuyOrders);
+    setSellOrders(sortedSellOrders);
+
+    // Optionally, handle matched orders display
+    // setMatchedOrders(matchedOrders);
+  }, [buyOrders, sellOrders, livePrice]);
+
+  // Function to update PnL every 1 second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      let newPnL = 0;
+
+      // Calculate PnL for each order based on live price
+      buyOrders.forEach((order) => {
+        newPnL += order.size * (livePrice - order.price);
+      });
+      sellOrders.forEach((order) => {
+        newPnL -= order.size * (livePrice - order.price);
+      });
+
+      setUserPnL(newPnL); // Update PnL
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval); // Cleanup on component unmount
+  }, [buyOrders, sellOrders, livePrice]);
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '20px',
-        padding: '20px',
-        maxWidth: '800px',
-        margin: '20px auto',
-      }}
-    >
-      {/* Buy/Sell Window */}
-      <div
-        style={{
-          flex: '1',
-          padding: '20px',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          backgroundColor: '#f9f9f9',
-        }}
-      >
-        <h2>Buy/Sell Cryptocurrency</h2>
+    <div>
+      <h1>Crypto Exchange</h1>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label>
-            Select Cryptocurrency:
-            <select
-              value={crypto}
-              onChange={(e) => setCrypto(e.target.value)}
-              style={{ marginLeft: '10px', padding: '5px' }}
-              disabled
-            >
-              <option value="Bitcoin">Bitcoin</option>
-            </select>
-          </label>
-        </div>
+      <h2>Live Price: ${livePrice.toFixed(2)}</h2>
+      <h3>Your PnL: ${userPnL.toFixed(2)}</h3>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label>
-            Order Type:
-            <select
-              value={orderType}
-              onChange={(e) => setOrderType(e.target.value)}
-              style={{ marginLeft: '10px', padding: '5px' }}
-            >
-              <option value="buy">Buy</option>
-              <option value="sell">Sell</option>
-            </select>
-          </label>
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label>
-            Amount:
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter amount"
-              style={{
-                marginLeft: '10px',
-                padding: '5px',
-                width: '100px',
-              }}
-            />
-          </label>
-        </div>
-
-        <button
-          onClick={handleOrder}
-          disabled={loading || !currentPrice}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: orderType === 'buy' ? '#4CAF50' : '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
+      <div>
+        <h3>Place Order</h3>
+        <select
+          value={newOrder.type}
+          onChange={(e) => setNewOrder({ ...newOrder, type: e.target.value })}
         >
-          {orderType === 'buy' ? 'Buy' : 'Sell'} {crypto}
-        </button>
+          <option value="">Select Type</option>
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+        </select>
+
+        <input
+          type="number"
+          placeholder="Price"
+          value={newOrder.price}
+          onChange={(e) => setNewOrder({ ...newOrder, price: e.target.value })}
+        />
+
+        <input
+          type="number"
+          placeholder="Size"
+          value={newOrder.size}
+          onChange={(e) => setNewOrder({ ...newOrder, size: e.target.value })}
+        />
+
+        <button onClick={handlePlaceOrder}>Place Order</button>
       </div>
 
-      {/* Live Price Section */}
-      <div
-        style={{
-          flex: '1',
-          padding: '20px',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          backgroundColor: '#ffffff',
-        }}
-      >
-        <h2>Live Price</h2>
-        <p>
-          Current Price:{' '}
-          {loading ? (
-            <span>Loading...</span>
-          ) : (
-            <strong>${currentPrice ? currentPrice.toFixed(2) : 'Error'}</strong>
-          )}
-        </p>
+      <div>
+        <h3>Buy Orders</h3>
+        <ul>
+          {buyOrders.map((order, index) => (
+            <li key={index}>
+              {order.type} | Price: ${order.price} | Size: {order.size} | Time: {order.timestamp}
+            </li>
+          ))}
+        </ul>
 
+        <h3>Sell Orders</h3>
+        <ul>
+          {sellOrders.map((order, index) => (
+            <li key={index}>
+              {order.type} | Price: ${order.price} | Size: {order.size} | Time: {order.timestamp}
+            </li>
+          ))}
+        </ul>
+
+        <h3>Order History</h3>
+        <ul>
+          {orderHistory.map((order, index) => (
+            <li key={index}>
+              {order.type} | Price: ${order.price} | Size: {order.size} | Time: {order.timestamp}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
 };
 
-export default BuySellWindow;
+export default OrderBook;

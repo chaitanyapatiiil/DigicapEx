@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Login = () => {
+const Signup = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,14 +27,13 @@ const Login = () => {
 
       if (response.ok) {
         setError('');
-        setMessage('Logged in successfully!');
-        localStorage.setItem('token', data.token); // Store token in localStorage
+        setMessage('Account created successfully! You can now log in.');
       } else {
-        setError(data.message || 'Invalid credentials');
+        setError(data.message || 'Signup failed.');
         setMessage('');
       }
     } catch (err) {
-      setError('Error connecting to server');
+      setError('Error connecting to server.');
       setMessage('');
     }
   };
@@ -42,7 +41,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
-        <h2 className="text-2xl text-white mb-4 text-center">Login</h2>
+        <h2 className="text-2xl text-white mb-4 text-center">Sign Up</h2>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
         {message && <p className="text-green-500 text-center mb-4">{message}</p>}
 
@@ -55,7 +54,7 @@ const Login = () => {
               className="w-full p-2 mt-1 rounded bg-gray-700 text-white"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="Enter a username"
             />
           </div>
 
@@ -67,7 +66,7 @@ const Login = () => {
               className="w-full p-2 mt-1 rounded bg-gray-700 text-white"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="Enter a password"
             />
           </div>
 
@@ -75,16 +74,16 @@ const Login = () => {
             type="submit"
             className="w-full py-2 mt-4 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none"
           >
-            Login
+            Sign Up
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-400 mt-4">
-          Don't have an account? <a href="/signup" className="text-blue-400 hover:underline">Sign up</a>
+          Already have an account? <a href="/login" className="text-blue-400 hover:underline">Log in</a>
         </p>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default Signup;
